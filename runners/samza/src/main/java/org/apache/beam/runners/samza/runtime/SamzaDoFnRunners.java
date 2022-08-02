@@ -26,6 +26,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.apache.beam.model.pipeline.v1.RunnerApi;
 import org.apache.beam.runners.core.DoFnRunner;
 import org.apache.beam.runners.core.DoFnRunners;
+import org.apache.beam.runners.core.InMemoryStateInternals;
 import org.apache.beam.runners.core.SideInputHandler;
 import org.apache.beam.runners.core.StateInternals;
 import org.apache.beam.runners.core.StateNamespaces;
@@ -202,10 +203,15 @@ public class SamzaDoFnRunners {
       Context context,
       String transformFullName) {
     // storing events within a bundle in states
-    final BagState<WindowedValue<InT>> bundledEventsBag =
+    BagState<WindowedValue<InT>> bundledEventsBag =
         nonKeyedStateInternalsFactory
             .stateInternalsForKey(null)
             .state(StateNamespaces.global(), StateTags.bag(bundleStateId, windowedValueCoder));
+
+
+    if ("enabled".equalsIgnoreCase(pipelineOptions.getConfigOverride().getOrDefault("disable.state", "disabled"))) {
+      bundledEventsBag = new InMemoryStateInternals.InMemoryBag<>(windowedValueCoder);
+    }
 
     final StateRequestHandler stateRequestHandler =
         SamzaStateRequestHandlers.of(
